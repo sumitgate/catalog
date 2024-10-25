@@ -1,42 +1,64 @@
-import org.json.JSONObject;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.io.IOException;
+import java.io.*;
+import java.util.*;
+import org.json.simple.*;
+import org.json.simple.parser.*;
 
-public class SecretSharing {
+public class SecretFinder {
     
-    public static int decodeValue(int base, String value) {
-        int decimalValue = 0;
-        for (char digit : value.toCharArray()) {
-            decimalValue = decimalValue * base + Character.getNumericValue(digit);
+    public static void main(String[] args) throws Exception {
+        // Reading and parsing JSON file
+        JSONParser parser = new JSONParser();
+        JSONObject input = (JSONObject) parser.parse(new FileReader("input.json"));
+        
+        // Extract n and k
+        JSONObject keys = (JSONObject) input.get("keys");
+        int n = Integer.parseInt(keys.get("n").toString());
+        int k = Integer.parseInt(keys.get("k").toString());
+
+        // Collect the (x, y) pairs
+        List<int[]> points = new ArrayList<>();
+        
+        for (Object key : input.keySet()) {
+            String keyStr = (String) key;
+            if (!keyStr.equals("keys")) {
+                int x = Integer.parseInt(keyStr);
+                JSONObject root = (JSONObject) input.get(keyStr);
+                int base = Integer.parseInt(root.get("base").toString());
+                String value = root.get("value").toString();
+                int y = Integer.parseInt(value, base);
+                points.add(new int[]{x, y});
+            }
         }
-        return decimalValue;
+
+        // Calculate the constant term (c) using Lagrange Interpolation
+        int constantTerm = lagrangeInterpolation(points, k);
+        
+        // Output the constant term
+        System.out.println("Constant term (c): " + constantTerm);
     }
 
-    public static void main(String[] args) {
-        String jsonFilePath = "test_case.json";
+    // Lagrange interpolation to find constant term
+    public static int lagrangeInterpolation(List<int[]> points, int k) {
+        int constant = 0;
 
-        try {
-            String content = new String(Files.readAllBytes(Paths.get(jsonFilePath)));
-            JSONObject data = new JSONObject(content);
+        // Loop through each point for interpolation
+        for (int i = 0; i < k; i++) {
+            int[] pointI = points.get(i);
+            int xi = pointI[0];
+            int yi = pointI[1];
 
-            int n = data.getJSONObject("keys").getInt("n");
-            int k = data.getJSONObject("keys").getInt("k");
+            double term = yi;
 
-            int c = 1;  // Initialize the constant term
-            for (int key = 1; key <= n; key++) {
-                if (data.has(String.valueOf(key))) {
-                    JSONObject rootInfo = data.getJSONObject(String.valueOf(key));
-                    int base = rootInfo.getInt("base");
-                    String value = rootInfo.getString("value");
-                    int y = decodeValue(base, value);
-                    c *= y;  // Multiply to find the constant term
+            for (int j = 0; j < k; j++) {
+                if (i != j) {
+                    int xj = points.get(j)[0];
+                    term *= (0 - xj) / (double)(xi - xj);
                 }
             }
 
-            System.out.println("The constant term c of the polynomial is: " + c);
-        } catch (IOException e) {
-            e.printStackTrace();
+            constant += term;
         }
+
+        return (int) constant;
     }
 }

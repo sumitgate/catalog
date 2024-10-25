@@ -1,0 +1,42 @@
+import org.json.JSONObject;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.io.IOException;
+
+public class SecretSharing {
+    
+    public static int decodeValue(int base, String value) {
+        int decimalValue = 0;
+        for (char digit : value.toCharArray()) {
+            decimalValue = decimalValue * base + Character.getNumericValue(digit);
+        }
+        return decimalValue;
+    }
+
+    public static void main(String[] args) {
+        String jsonFilePath = "test_case.json";
+
+        try {
+            String content = new String(Files.readAllBytes(Paths.get(jsonFilePath)));
+            JSONObject data = new JSONObject(content);
+
+            int n = data.getJSONObject("keys").getInt("n");
+            int k = data.getJSONObject("keys").getInt("k");
+
+            int c = 1;  // Initialize the constant term
+            for (int key = 1; key <= n; key++) {
+                if (data.has(String.valueOf(key))) {
+                    JSONObject rootInfo = data.getJSONObject(String.valueOf(key));
+                    int base = rootInfo.getInt("base");
+                    String value = rootInfo.getString("value");
+                    int y = decodeValue(base, value);
+                    c *= y;  // Multiply to find the constant term
+                }
+            }
+
+            System.out.println("The constant term c of the polynomial is: " + c);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
